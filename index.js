@@ -30,6 +30,9 @@ client.on('messageCreate', message => {
     if (message.author.bot) return;
     if (message.channel.name !== TARGET_CHANNEL_NAME) return;
 
+    // メッセージに「課題曲」が含まれていない場合は無視
+    if (!message.content.includes('課題曲')) return;
+
     const randomSong = songs[Math.floor(Math.random() * songs.length)];
     message.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong}`);
 });
