@@ -104,28 +104,42 @@ const commands = [
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'song') {
-        const randomSong = songs[Math.floor(Math.random() * songs.length)];
-        await interaction.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong.title}（${randomSong.level}）`);
-        return;
-    }
-
     if (interaction.commandName === 'level') {
-        const min = interaction.options.getString('min');
-        const max = interaction.options.getString('max');
+        const minLevel = interaction.options.getString('min');
+        const maxLevel = interaction.options.getString('max');
 
-        const filtered = songs.filter(song =>
-            isWithinDifficultyRange(song.level, min, max)
-        );
+        await interaction.deferReply(); // ✅ 先に返信待ちを送信
 
-        if (filtered.length === 0) {
-            await interaction.reply('❌ 条件に合う課題曲が見つかりませんでした。');
+        let filteredSongs = songs;
+
+        if (minLevel && maxLevel) {
+            filteredSongs = songs.filter(song => isWithinDifficultyRange(song.level, minLevel, maxLevel));
+        } else if (minLevel) {
+            const minIndex = difficultyOrder.indexOf(minLevel);
+            filteredSongs = songs.filter(song =>
+                difficultyOrder.indexOf(song.level) >= minIndex
+            );
+        } else if (maxLevel) {
+            const maxIndex = difficultyOrder.indexOf(maxLevel);
+            filteredSongs = songs.filter(song =>
+                difficultyOrder.indexOf(song.level) <= maxIndex
+            );
+        }
+
+        if (filteredSongs.length === 0) {
+            await interaction.editReply('❌ 条件に合う課題曲が見つかりませんでした。');
             return;
         }
 
-        const randomSong = filtered[Math.floor(Math.random() * filtered.length)];
-        await interaction.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong.title}（${randomSong.level}）`);
-        return;
+        const randomSong = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
+        await interaction.editReply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+    }
+
+    if (interaction.commandName === 'song') {
+        await interaction.deferReply(); // ✅ 返信待ち
+
+        const randomSong = songs[Math.floor(Math.random() * songs.length)];
+        await interaction.editReply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
     }
 });
 
