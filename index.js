@@ -91,14 +91,22 @@ client.on('interactionCreate', async interaction => {
     const command = interaction.commandName;
     let filteredSongs = songs;
 
-    try {
-        try {
-            await interaction.deferReply();
-        } catch (e) {
-            console.warn('⚠️ deferReply に失敗:', e.message);
-            return;
-        }
+    // interaction の有効時間をチェック（Discordの有効期限は約3秒）
+    const now = Date.now();
+    const interactionCreatedAt = interaction.createdTimestamp || now;
+    if (now - interactionCreatedAt > 2800) {
+        console.warn(`⚠️ 無効な interaction（${now - interactionCreatedAt}ms 経過）をスキップ`);
+        return;
+    }
 
+    try {
+        await interaction.deferReply();
+    } catch (e) {
+        console.warn('⚠️ deferReply に失敗:', e.message);
+        return; // 無効な interaction のため終了
+    }
+
+    try {
         console.log(`[${command}] コマンドが呼ばれました`);
 
         if (command === 'level') {
@@ -139,21 +147,18 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error('💥 エラー発生:', error);
 
-        if (interaction.deferred || interaction.replied) {
-            try {
+        try {
+            if (interaction.deferred || interaction.replied) {
                 await interaction.editReply('⚠️ エラーが発生しました。');
-            } catch (e) {
-                console.error('⚠️ editReply に失敗:', e.message);
-            }
-        } else {
-            try {
+            } else {
                 await interaction.reply('⚠️ エラーが発生しました。');
-            } catch (e) {
-                console.error('⚠️ reply に失敗:', e.message);
             }
+        } catch (e) {
+            console.error('⚠️ reply/editReply 両方に失敗:', e.message);
         }
     }
 });
+
 
 // Bot起動
 client.login(process.env.TOKEN)

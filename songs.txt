@@ -65,7 +65,7 @@ story,12
 ハム太郎とっとこうた,12
 バラライカ,12
 HOT LIMIT,12
-,12+
+(きさらぎ駅),12+
 Princess♂,13+
 ドラゴンエネルギー,12
 なだめスかし Negotiation（TVsize）,12
