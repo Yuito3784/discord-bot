@@ -85,20 +85,20 @@ const commands = [
     }
 })();
 
-// コマンド実行処理
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    try {
-        await interaction.deferReply(); // 最初に即実行して 3秒タイムアウト回避
-    } catch (err) {
-        console.error('⚠️ deferReply に失敗:', err);
-        return;
-    }
+    const command = interaction.commandName;
+    let filteredSongs = songs;
 
     try {
-        const command = interaction.commandName;
-        let filteredSongs = songs;
+        // deferReply 失敗時に Unknown interaction を防ぐ
+        try {
+            await interaction.deferReply();
+        } catch (e) {
+            console.warn('⚠️ deferReply に失敗:', e.message);
+            return;
+        }
 
         if (command === 'level') {
             const minLevel = interaction.options.getString('min');
@@ -133,14 +133,18 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error('💥 エラー発生:', error);
 
-        try {
-            if (interaction.deferred || interaction.replied) {
+        if (interaction.deferred || interaction.replied) {
+            try {
                 await interaction.editReply('⚠️ エラーが発生しました。');
-            } else if (interaction.isRepliable()) {
-                await interaction.reply('⚠️ エラーが発生しました。');
+            } catch (e) {
+                console.error('⚠️ editReply に失敗:', e.message);
             }
-        } catch (e) {
-            console.error('⚠️ 応答失敗:', e.message);
+        } else {
+            try {
+                await interaction.reply('⚠️ エラーが発生しました。');
+            } catch (e) {
+                console.error('⚠️ reply に失敗:', e.message);
+            }
         }
     }
 });
