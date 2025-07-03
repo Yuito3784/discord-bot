@@ -12,29 +12,121 @@ const client = new Client({
     ]
 });
 
-// 曲リスト（ランダムで選ばれる）
-// 🔽 songs.txtから曲を読み込んで配列化
+// 難易度の順序
+const difficultyOrder = [
+    '10+', '11', '11+', '12', '12+', '13', '13+', '14', '14+', '15'
+];
+
+function isWithinDifficultyRange(level, min, max) {
+    const index = difficultyOrder.indexOf(level);
+    const minIndex = min ? difficultyOrder.indexOf(min) : 0;
+    const maxIndex = max ? difficultyOrder.indexOf(max) : difficultyOrder.length - 1;
+
+    return (
+        index !== -1 &&
+        minIndex !== -1 &&
+        maxIndex !== -1 &&
+        index >= minIndex &&
+        index <= maxIndex
+    );
+}
+
+// 課題曲読み込み
 let songs = [];
 try {
     const data = fs.readFileSync('songs.txt', 'utf-8');
-    songs = data.split('\n').filter(line => line.trim() !== '');
+    songs = data
+        .split('\n')
+        .map(line => {
+            const [title, level] = line.trim().split(',');
+            return { title, level };
+        })
+        .filter(song => song.title && song.level);
 } catch (err) {
     console.error('曲リストの読み込みに失敗しました:', err);
     process.exit(1);
 }
 
-// 反応するチャンネル名を指定
-const TARGET_CHANNEL_NAME = '課題曲bot';  // 実際のチャンネル名に合わせてね！
+// // 反応するチャンネル名を指定
+// const TARGET_CHANNEL_NAME = '課題曲bot';  // 実際のチャンネル名に合わせてね！
 
-client.on('messageCreate', message => {
-    if (message.author.bot) return;
-    if (message.channel.name !== TARGET_CHANNEL_NAME) return;
+// client.on('messageCreate', message => {
+//     if (message.author.bot) return;
+//     if (message.channel.name !== TARGET_CHANNEL_NAME) return;
 
-    // メッセージに「課題曲」が含まれていない場合は無視
-    if (!message.content.includes('課題曲')) return;
+//     // メッセージに「課題曲」が含まれていない場合は無視
+//     if (!message.content.includes('課題曲')) return;
 
-    const randomSong = songs[Math.floor(Math.random() * songs.length)];
-    message.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong}`);
+//     const randomSong = songs[Math.floor(Math.random() * songs.length)];
+//     message.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong}`);
+// });
+
+// スラッシュコマンド定義
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+const commands = [
+    new SlashCommandBuilder()
+        .setName('song')
+        .setDescription('全課題曲からランダムで1曲を提示する')
+        .toJSON(),
+
+    new SlashCommandBuilder()
+        .setName('level')
+        .setDescription('難易度を指定して課題曲を提示する')
+        .addStringOption(option =>
+            option.setName('min')
+                .setDescription('最小難易度 (例: 11, 13+)')
+                .setRequired(false)
+        )
+        .addStringOption(option =>
+            option.setName('max')
+                .setDescription('最大難易度 (例: 12+, 14)')
+                .setRequired(false)
+        )
+        .toJSON()
+];
+
+// コマンド登録
+(async () => {
+    try {
+        console.log('📡 コマンドを登録中...');
+        await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: commands }
+        );
+        console.log('✅ スラッシュコマンド登録完了');
+    } catch (error) {
+        console.error('❌ コマンド登録失敗:', error);
+    }
+})();
+
+// コマンド実行処理
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === 'song') {
+        const randomSong = songs[Math.floor(Math.random() * songs.length)];
+        await interaction.reply(`🎧 ランダム課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+        return;
+    }
+
+    if (interaction.commandName === 'level') {
+        const min = interaction.options.getString('min');
+        const max = interaction.options.getString('max');
+
+        const filtered = songs.filter(song =>
+            isWithinDifficultyRange(song.level, min, max)
+        );
+
+        if (filtered.length === 0) {
+            await interaction.reply('❌ 条件に合う課題曲が見つかりませんでした。');
+            return;
+        }
+
+        const randomSong = filtered[Math.floor(Math.random() * filtered.length)];
+        await interaction.reply(`🎯 難易度条件にマッチした課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+        return;
+    }
 });
 
 // Botを起動して成功/失敗ログを出す
