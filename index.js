@@ -76,7 +76,26 @@ const commands = [
         .setRequired(false)
         .addChoices(...difficultyOrder.map(level => ({ name: level, value: level })))
     )
-    .toJSON()
+    .toJSON(),
+
+    new SlashCommandBuilder()
+        .setName('course')
+        .setDescription('指定した難易度で3曲構成の課題コースを作成します')
+        .addStringOption(option =>
+            option
+            .setName('min')
+            .setDescription('最小難易度')
+            .setRequired(false)
+            .addChoices(...difficultyOrder.map(level => ({ name: level, value: level })))
+        )
+        .addStringOption(option =>
+            option
+            .setName('max')
+            .setDescription('最大難易度')
+            .setRequired(false)
+            .addChoices(...difficultyOrder.map(level => ({ name: level, value: level })))
+        )
+        .toJSON()
 ];
 
 // コマンド登録
@@ -137,6 +156,64 @@ client.on('interactionCreate', async interaction => {
 
         await interaction.reply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
 
+        if (command === 'course') {
+            const minLevel = interaction.options.getString('min');
+            const maxLevel = interaction.options.getString('max');
+            console.log(`min: ${minLevel}, max: ${maxLevel}`);
+
+            const minIndex = minLevel ? difficultyOrder.indexOf(minLevel) : 0;
+            const maxIndex = maxLevel ? difficultyOrder.indexOf(maxLevel) : difficultyOrder.length - 1;
+
+            if (minIndex === -1 || maxIndex === -1 || minIndex > maxIndex) {
+                await interaction.reply('❌ レベルの指定が不正です。例: min=12, max=14+');
+                return;
+            }
+
+            const candidates = songs.filter(song => {
+                const idx = difficultyOrder.indexOf(song.level);
+                return idx >= minIndex && idx <= maxIndex;
+            });
+
+            console.log(`候補曲数: ${candidates.length}`);
+
+            if (candidates.length < 3) {
+                await interaction.reply('❌ 条件に合う課題曲が3曲未満のため、コースを生成できませんでした。');
+                return;
+            }
+
+            const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+            const selected = [];
+
+            for (const song of shuffled) {
+                if (selected.length === 0) {
+                    selected.push(song);
+                } else {
+                    const lastLevelIndex = difficultyOrder.indexOf(selected[selected.length - 1].level);
+                    const currentLevelIndex = difficultyOrder.indexOf(song.level);
+                    if (
+                        currentLevelIndex >= lastLevelIndex &&
+                        !selected.find(s => s.title === song.title)
+                    ) {
+                        selected.push(song);
+                    }
+                }
+                if (selected.length === 3) break;
+            }
+
+            if (selected.length < 3) {
+                await interaction.reply('❌ 条件を満たす3曲を選出できませんでした。');
+                return;
+            }
+
+            const replyMessage = selected
+                .map((s, i) => `${i + 1}曲目：${s.title}（${s.level}）`)
+                .join('\n');
+
+            console.log('選ばれたコース:\n' + replyMessage);
+
+            await interaction.reply(`🎼 あなたの課題コースはこちら！\n${replyMessage}`);
+            return;
+        }
     } catch (error) {
         console.error('💥 エラー発生:', error);
         try {
