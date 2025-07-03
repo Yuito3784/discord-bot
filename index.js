@@ -38,10 +38,14 @@ try {
     songs = data
         .split('\n')
         .map(line => {
-            const [title, level] = line.trim().split(',');
-            return { title, level };
+            const match = line.trim().match(/^"(.*)","(.*)"$/);
+            if (!match) {
+                console.warn('⚠️ 行の形式が不正です:', line);
+                return null;
+            }
+            return { title: match[1], level: match[2] };
         })
-        .filter(song => song.title && song.level);
+        .filter(song => song && song.title && song.level);
 } catch (err) {
     console.error('❌ 曲リストの読み込みに失敗:', err);
 }
@@ -50,25 +54,29 @@ try {
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 const commands = [
-    new SlashCommandBuilder()
-        .setName('song')
-        .setDescription('全課題曲からランダムで1曲を提示する')
-        .toJSON(),
+  new SlashCommandBuilder()
+    .setName('song')
+    .setDescription('全課題曲からランダムで1曲を提示する')
+    .toJSON(),
 
-    new SlashCommandBuilder()
-        .setName('level')
-        .setDescription('難易度を指定して課題曲を提示する')
-        .addStringOption(option =>
-            option.setName('min')
-                .setDescription('最小難易度 (例: 11, 13+)')
-                .setRequired(false)
-        )
-        .addStringOption(option =>
-            option.setName('max')
-                .setDescription('最大難易度 (例: 12+, 14)')
-                .setRequired(false)
-        )
-        .toJSON()
+  new SlashCommandBuilder()
+    .setName('level')
+    .setDescription('難易度を指定して課題曲を提示する')
+    .addStringOption(option =>
+      option
+        .setName('min')
+        .setDescription('最小難易度')
+        .setRequired(false)
+        .addChoices(...difficultyOrder.map(level => ({ name: level, value: level })))
+    )
+    .addStringOption(option =>
+      option
+        .setName('max')
+        .setDescription('最大難易度')
+        .setRequired(false)
+        .addChoices(...difficultyOrder.map(level => ({ name: level, value: level })))
+    )
+    .toJSON()
 ];
 
 // コマンド登録
