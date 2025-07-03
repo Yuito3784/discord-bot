@@ -121,41 +121,7 @@ client.on('interactionCreate', async interaction => {
     try {
         console.log(`[${command}] コマンドが呼ばれました`);
 
-        if (command === 'level') {
-            const minLevel = interaction.options.getString('min');
-            const maxLevel = interaction.options.getString('max');
-            console.log(`min: ${minLevel}, max: ${maxLevel}`);
-
-            if (minLevel && maxLevel) {
-                filteredSongs = songs.filter(song =>
-                    isWithinDifficultyRange(song.level, minLevel, maxLevel));
-            } else if (minLevel) {
-                const minIndex = difficultyOrder.indexOf(minLevel);
-                filteredSongs = songs.filter(song =>
-                    difficultyOrder.indexOf(song.level) >= minIndex);
-            } else if (maxLevel) {
-                const maxIndex = difficultyOrder.indexOf(maxLevel);
-                filteredSongs = songs.filter(song =>
-                    difficultyOrder.indexOf(song.level) <= maxIndex);
-            }
-        }
-
-        if (command === 'song') {
-            filteredSongs = songs;
-        }
-
-        console.log(`候補曲数: ${filteredSongs.length}`);
-
-        if (filteredSongs.length === 0) {
-            await interaction.reply('❌ 条件に合う課題曲が見つかりませんでした。');
-            return;
-        }
-
-        const randomSong = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
-        console.log(`選ばれた曲: ${randomSong.title}（${randomSong.level}）`);
-
-        await interaction.reply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
-
+        // ======== /course コマンドの処理 ========
         if (command === 'course') {
             const minLevel = interaction.options.getString('min');
             const maxLevel = interaction.options.getString('max');
@@ -212,7 +178,46 @@ client.on('interactionCreate', async interaction => {
             console.log('選ばれたコース:\n' + replyMessage);
 
             await interaction.reply(`🎼 あなたの課題コースはこちら！\n${replyMessage}`);
+            return; // ここで早期 return（他の処理をスキップ）
+        }
+
+        // ======== /level コマンドの処理 ========
+        if (command === 'level') {
+            const minLevel = interaction.options.getString('min');
+            const maxLevel = interaction.options.getString('max');
+            console.log(`min: ${minLevel}, max: ${maxLevel}`);
+
+            if (minLevel && maxLevel) {
+                filteredSongs = songs.filter(song =>
+                    isWithinDifficultyRange(song.level, minLevel, maxLevel));
+            } else if (minLevel) {
+                const minIndex = difficultyOrder.indexOf(minLevel);
+                filteredSongs = songs.filter(song =>
+                    difficultyOrder.indexOf(song.level) >= minIndex);
+            } else if (maxLevel) {
+                const maxIndex = difficultyOrder.indexOf(maxLevel);
+                filteredSongs = songs.filter(song =>
+                    difficultyOrder.indexOf(song.level) <= maxIndex);
+            }
+        }
+
+        // ======== /song コマンドは全曲から選択 ========
+        if (command === 'song') {
+            filteredSongs = songs;
+        }
+
+        console.log(`候補曲数: ${filteredSongs.length}`);
+
+        if (filteredSongs.length === 0) {
+            await interaction.reply('❌ 条件に合う課題曲が見つかりませんでした。');
             return;
+        }
+
+        if (command === 'song' || command === 'level') {
+            const randomSong = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
+            console.log(`選ばれた曲: ${randomSong.title}（${randomSong.level}）`);
+
+            await interaction.reply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
         }
     } catch (error) {
         console.error('💥 エラー発生:', error);
@@ -227,6 +232,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 });
+
 
 // Bot起動
 client.login(process.env.TOKEN)
