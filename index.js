@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const express = require('express');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -106,7 +106,7 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.commandName === 'song') {
         const randomSong = songs[Math.floor(Math.random() * songs.length)];
-        await interaction.reply(`🎧 ランダム課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+        await interaction.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong.title}（${randomSong.level}）`);
         return;
     }
 
@@ -124,7 +124,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         const randomSong = filtered[Math.floor(Math.random() * filtered.length)];
-        await interaction.reply(`🎯 難易度条件にマッチした課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+        await interaction.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong.title}（${randomSong.level}）`);
         return;
     }
 });
