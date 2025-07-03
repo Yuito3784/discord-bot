@@ -92,7 +92,6 @@ client.on('interactionCreate', async interaction => {
     let filteredSongs = songs;
 
     try {
-        // deferReply 失敗時に Unknown interaction を防ぐ
         try {
             await interaction.deferReply();
         } catch (e) {
@@ -100,9 +99,12 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
+        console.log(`[${command}] コマンドが呼ばれました`);
+
         if (command === 'level') {
             const minLevel = interaction.options.getString('min');
             const maxLevel = interaction.options.getString('max');
+            console.log(`min: ${minLevel}, max: ${maxLevel}`);
 
             if (minLevel && maxLevel) {
                 filteredSongs = songs.filter(song =>
@@ -122,12 +124,16 @@ client.on('interactionCreate', async interaction => {
             filteredSongs = songs;
         }
 
+        console.log(`候補曲数: ${filteredSongs.length}`);
+
         if (filteredSongs.length === 0) {
             await interaction.editReply('❌ 条件に合う課題曲が見つかりませんでした。');
             return;
         }
 
         const randomSong = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
+        console.log(`選ばれた曲: ${randomSong.title}（${randomSong.level}）`);
+
         await interaction.editReply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
 
     } catch (error) {
