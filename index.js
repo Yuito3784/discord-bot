@@ -104,26 +104,32 @@ const commands = [
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'level') {
-        const minLevel = interaction.options.getString('min');
-        const maxLevel = interaction.options.getString('max');
+    try {
+        await interaction.deferReply(); // 先に応答予約
 
-        await interaction.deferReply(); // ✅ 先に返信待ちを送信
-
+        const command = interaction.commandName;
         let filteredSongs = songs;
 
-        if (minLevel && maxLevel) {
-            filteredSongs = songs.filter(song => isWithinDifficultyRange(song.level, minLevel, maxLevel));
-        } else if (minLevel) {
-            const minIndex = difficultyOrder.indexOf(minLevel);
-            filteredSongs = songs.filter(song =>
-                difficultyOrder.indexOf(song.level) >= minIndex
-            );
-        } else if (maxLevel) {
-            const maxIndex = difficultyOrder.indexOf(maxLevel);
-            filteredSongs = songs.filter(song =>
-                difficultyOrder.indexOf(song.level) <= maxIndex
-            );
+        if (command === 'level') {
+            const minLevel = interaction.options.getString('min');
+            const maxLevel = interaction.options.getString('max');
+
+            if (minLevel && maxLevel) {
+                filteredSongs = songs.filter(song =>
+                    isWithinDifficultyRange(song.level, minLevel, maxLevel));
+            } else if (minLevel) {
+                const minIndex = difficultyOrder.indexOf(minLevel);
+                filteredSongs = songs.filter(song =>
+                    difficultyOrder.indexOf(song.level) >= minIndex);
+            } else if (maxLevel) {
+                const maxIndex = difficultyOrder.indexOf(maxLevel);
+                filteredSongs = songs.filter(song =>
+                    difficultyOrder.indexOf(song.level) <= maxIndex);
+            }
+        }
+
+        if (command === 'song') {
+            filteredSongs = songs;
         }
 
         if (filteredSongs.length === 0) {
@@ -133,13 +139,24 @@ client.on('interactionCreate', async interaction => {
 
         const randomSong = filteredSongs[Math.floor(Math.random() * filteredSongs.length)];
         await interaction.editReply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
-    }
 
-    if (interaction.commandName === 'song') {
-        await interaction.deferReply(); // ✅ 返信待ち
+    } catch (error) {
+        console.error('💥 エラー発生:', error);
 
-        const randomSong = songs[Math.floor(Math.random() * songs.length)];
-        await interaction.editReply(`🎧 おすすめの課題曲はこちら！\n🎵 ${randomSong.title}（${randomSong.level}）`);
+        // 応答が済んでいないときのみ reply、それ以外は editReply
+        if (interaction.deferred || interaction.replied) {
+            try {
+                await interaction.editReply('⚠️ エラーが発生しました。');
+            } catch (e) {
+                console.error('⚠️ editReply に失敗:', e.message);
+            }
+        } else {
+            try {
+                await interaction.reply('⚠️ エラーが発生しました。');
+            } catch (e) {
+                console.error('⚠️ reply に失敗:', e.message);
+            }
+        }
     }
 });
 
