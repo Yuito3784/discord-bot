@@ -43,23 +43,8 @@ try {
         })
         .filter(song => song.title && song.level);
 } catch (err) {
-    console.error('曲リストの読み込みに失敗しました:', err);
-    process.exit(1);
+    console.error('❌ 曲リストの読み込みに失敗:', err);
 }
-
-// // 反応するチャンネル名を指定
-// const TARGET_CHANNEL_NAME = '課題曲bot';  // 実際のチャンネル名に合わせてね！
-
-// client.on('messageCreate', message => {
-//     if (message.author.bot) return;
-//     if (message.channel.name !== TARGET_CHANNEL_NAME) return;
-
-//     // メッセージに「課題曲」が含まれていない場合は無視
-//     if (!message.content.includes('課題曲')) return;
-
-//     const randomSong = songs[Math.floor(Math.random() * songs.length)];
-//     message.reply(`あなたにおすすめの曲はこれです！🎧\n🎵 ${randomSong}`);
-// });
 
 // スラッシュコマンド定義
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -105,8 +90,13 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     try {
-        await interaction.deferReply(); // 先に応答予約
+        await interaction.deferReply(); // 最初に即実行して 3秒タイムアウト回避
+    } catch (err) {
+        console.error('⚠️ deferReply に失敗:', err);
+        return;
+    }
 
+    try {
         const command = interaction.commandName;
         let filteredSongs = songs;
 
@@ -143,45 +133,33 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error('💥 エラー発生:', error);
 
-        // 応答が済んでいないときのみ reply、それ以外は editReply
-        if (interaction.deferred || interaction.replied) {
-            try {
+        try {
+            if (interaction.deferred || interaction.replied) {
                 await interaction.editReply('⚠️ エラーが発生しました。');
-            } catch (e) {
-                console.error('⚠️ editReply に失敗:', e.message);
-            }
-        } else {
-            try {
+            } else if (interaction.isRepliable()) {
                 await interaction.reply('⚠️ エラーが発生しました。');
-            } catch (e) {
-                console.error('⚠️ reply に失敗:', e.message);
             }
+        } catch (e) {
+            console.error('⚠️ 応答失敗:', e.message);
         }
     }
 });
 
-// Botを起動して成功/失敗ログを出す
+// Bot起動
 client.login(process.env.TOKEN)
-    .then(() => {
-        console.log('🤖 Discord Bot にログインしました');
-    })
-    .catch(err => {
-        console.error('❌ Discord Bot のログインに失敗:', err);
-    });
+    .then(() => console.log('🤖 Discord Bot にログインしました'))
+    .catch(err => console.error('❌ Discord Bot のログインに失敗:', err));
 
+// Expressサーバー起動
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-  res.send('Bot is alive!');
-});
-
+app.get('/', (_, res) => res.send('Bot is alive!'));
 app.listen(PORT, () => {
-  console.log(`Webサーバーがポート ${PORT} で起動中`);
+    console.log(`Webサーバーがポート ${PORT} で起動中`);
 });
 
-// Botが落ちたときに再起動を促す
+// 異常終了対策
 process.on('uncaughtException', (err) => {
     console.error('💥 uncaughtException:', err);
-    process.exit(1); // Replit側が自動で再起動する可能性あり
+    process.exit(1);
 });
